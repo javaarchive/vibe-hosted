@@ -121,15 +121,37 @@ class PlexClient:
             sys.exit(1)
     
     def find_media_by_path(self, file_path: str) -> Optional[object]:
-        """Find media item in Plex by file path"""
+        """Find media item in Plex by browsing and comparing file paths"""
         try:
+            import os
+            target_filename = os.path.basename(file_path)
+            print(f"  Searching for: {file_path}")
+            print(f"  Target filename: {target_filename}")
+            
             for library in self.server.library.sections():
+                print(f"  Browsing library: {library.title}")
                 try:
-                    results = library.search(filepath=file_path)
-                    if results:
-                        return results[0]
-                except:
+                    for item in library.all():
+                        if hasattr(item, 'media') and item.media:
+                            for media in item.media:
+                                if hasattr(media, 'parts') and media.parts:
+                                    for part in media.parts:
+                                        if hasattr(part, 'file'):
+                                            plex_file_path = part.file
+                                            plex_filename = os.path.basename(plex_file_path)
+                                            
+                                            if plex_file_path == file_path:
+                                                print(f"  ✓ Found exact path match: {plex_file_path}")
+                                                return item
+                                            
+                                            if plex_filename == target_filename:
+                                                print(f"  ✓ Found filename match: {plex_file_path}")
+                                                return item
+                except Exception as e:
+                    print(f"  Error browsing library {library.title}: {e}")
                     continue
+            
+            print(f"  ✗ No match found for {file_path}")
             return None
         except Exception as e:
             print(f"Error searching for media by path {file_path}: {e}")
