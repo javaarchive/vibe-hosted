@@ -212,7 +212,7 @@ class PlexClient:
                 print(f"No valid items found to create playlist '{name}'")
                 return False
             
-            playlist = self.server.createPlaylist(name, items)
+            playlist = self.server.createPlaylist(name, items=items)
             print(f"Successfully created playlist '{name}' with {len(items)} items")
             return True
         except Exception as e:
