@@ -154,7 +154,6 @@ def migrate_playlist(jellyfin_url: str, jellyfin_username: str, jellyfin_passwor
     print(f"Starting migration of playlist '{playlist_name}'...")
     
     jellyfin = JellyfinClient(jellyfin_url, jellyfin_username, jellyfin_password)
-    plex = PlexClient(plex_url, plex_username, plex_password, plex_server_name)
     
     print(f"Searching for playlist '{playlist_name}' in Jellyfin...")
     playlists = jellyfin.search_playlists(playlist_name)
@@ -183,6 +182,70 @@ def migrate_playlist(jellyfin_url: str, jellyfin_username: str, jellyfin_passwor
         return False
     
     print(f"Found {len(jellyfin_items)} items in Jellyfin playlist")
+    
+    print("\n" + "="*60)
+    print("JELLYFIN PLAYLIST DATA")
+    print("="*60)
+    print(f"Playlist Name: {target_playlist['Name']}")
+    print(f"Playlist ID: {target_playlist['Id']}")
+    print(f"Total Items: {len(jellyfin_items)}")
+    print("\nPlaylist Items:")
+    print("-" * 40)
+    
+    for i, item in enumerate(jellyfin_items, 1):
+        print(f"\n{i}. {item.get('Name', 'Unknown Title')}")
+        print(f"   Type: {item.get('Type', 'Unknown')}")
+        print(f"   ID: {item.get('Id', 'Unknown')}")
+        
+        if "MediaSources" in item and item["MediaSources"]:
+            media_source = item["MediaSources"][0]
+            file_path = media_source.get("Path", "No path available")
+            print(f"   File Path: {file_path}")
+            
+            if "Container" in media_source:
+                print(f"   Container: {media_source['Container']}")
+            if "Size" in media_source:
+                size_mb = media_source["Size"] / (1024 * 1024)
+                print(f"   Size: {size_mb:.1f} MB")
+        else:
+            print("   File Path: No media sources available")
+        
+        if "RunTimeTicks" in item:
+            runtime_seconds = item["RunTimeTicks"] / 10000000
+            runtime_minutes = runtime_seconds / 60
+            print(f"   Duration: {runtime_minutes:.1f} minutes")
+        
+        if "ProductionYear" in item:
+            print(f"   Year: {item['ProductionYear']}")
+        
+        if "Artists" in item and item["Artists"]:
+            artists = ", ".join(item["Artists"])
+            print(f"   Artists: {artists}")
+        
+        if "Album" in item:
+            print(f"   Album: {item['Album']}")
+    
+    print("\n" + "="*60)
+    print("END JELLYFIN DATA - PROCEEDING TO PLEX MIGRATION")
+    print("="*60)
+    
+    try:
+        continue_migration = input("\nDo you want to proceed with Plex migration? (y/N): ").strip().lower()
+        if continue_migration not in ['y', 'yes']:
+            print("Migration cancelled by user.")
+            return False
+    except (EOFError, KeyboardInterrupt):
+        print("\nMigration cancelled by user.")
+        return False
+    
+    print("\nProceeding with Plex migration...")
+    
+    try:
+        plex = PlexClient(plex_url, plex_username, plex_password, plex_server_name)
+    except Exception as e:
+        print(f"Failed to connect to Plex server: {e}")
+        print("Jellyfin data retrieval was successful, but Plex connection failed.")
+        return False
     
     plex_items = []
     not_found_items = []
