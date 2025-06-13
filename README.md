@@ -35,10 +35,8 @@ pip install -r requirements.txt
 2. Go to Dashboard → API Keys
 3. Create a new API key for the migration tool
 
-#### Plex Token
-1. Log into your Plex web interface
-2. Go to Settings → Account → Privacy
-3. Find your Plex Token or create one using the Plex API
+#### Plex Username and Password
+You will need your Plex account username and password. The tool will securely prompt for your password when you run it.
 
 ### Usage
 
@@ -48,8 +46,9 @@ python migrate_playlist.py "My Playlist Name" \
   --jellyfin-url http://jellyfin:8096 \
   --jellyfin-api-key YOUR_JELLYFIN_API_KEY \
   --plex-url http://plex:32400 \
-  --plex-token YOUR_PLEX_TOKEN
+  --plex-username YOUR_PLEX_USERNAME
 ```
+The tool will securely prompt for your Plex password.
 
 #### Using Environment Variables
 Set the following environment variables to avoid passing credentials on the command line:
@@ -57,10 +56,11 @@ Set the following environment variables to avoid passing credentials on the comm
 export JELLYFIN_URL="http://jellyfin:8096"
 export JELLYFIN_API_KEY="your_jellyfin_api_key"
 export PLEX_URL="http://plex:32400"
-export PLEX_TOKEN="your_plex_token"
+export PLEX_USERNAME="your_plex_username"
 
 python migrate_playlist.py "My Playlist Name"
 ```
+The tool will still securely prompt for your Plex password.
 
 #### Dry Run Mode
 Preview what would be migrated without actually creating the playlist:
@@ -80,7 +80,7 @@ python migrate_playlist.py "My Playlist Name" --verbose
 - `--jellyfin-url` - Jellyfin server URL
 - `--jellyfin-api-key` - Jellyfin API key
 - `--plex-url` - Plex server URL
-- `--plex-token` - Plex authentication token
+- `--plex-username` - Plex username
 - `--dry-run` - Preview migration without creating playlist
 - `--verbose` - Enable verbose logging
 - `--help` - Show help message
@@ -96,7 +96,7 @@ python migrate_playlist.py "My Playlist Name" --verbose
 
 #### Authentication Errors
 - Verify your Jellyfin API key is correct and has appropriate permissions
-- Ensure your Plex token is valid and not expired
+- Ensure your Plex username and password are correct
 - Check that server URLs are accessible from where you're running the script
 
 #### Missing Media Files

@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 import argparse
+import getpass
 import json
 import logging
 import os
@@ -11,6 +12,7 @@ from urllib.parse import urljoin
 import requests
 from plexapi.server import PlexServer
 from plexapi.playlist import Playlist
+from plexapi.myplex import MyPlexAccount
 from plexapi.exceptions import NotFound, Unauthorized
 
 
@@ -45,8 +47,9 @@ class JellyfinClient:
 
 
 class PlexClient:
-    def __init__(self, base_url: str, token: str):
-        self.plex = PlexServer(base_url, token)
+    def __init__(self, base_url: str, username: str, password: str):
+        account = MyPlexAccount(username, password)
+        self.plex = PlexServer(base_url, account.authToken)
 
     def find_media_by_path(self, file_path: str) -> Optional[Any]:
         for section in self.plex.library.sections():
@@ -154,7 +157,7 @@ def main():
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog='''
 Examples:
-  %(prog)s "My Playlist" --jellyfin-url http://jellyfin:8096 --jellyfin-api-key YOUR_KEY --plex-url http://plex:32400 --plex-token YOUR_TOKEN
+  %(prog)s "My Playlist" --jellyfin-url http://jellyfin:8096 --jellyfin-api-key YOUR_KEY --plex-url http://plex:32400 --plex-username YOUR_USERNAME
   %(prog)s "My Playlist" --dry-run
   %(prog)s "My Playlist" --verbose
 
@@ -162,7 +165,7 @@ Environment Variables:
   JELLYFIN_URL      Jellyfin server URL
   JELLYFIN_API_KEY  Jellyfin API key
   PLEX_URL          Plex server URL  
-  PLEX_TOKEN        Plex authentication token
+  PLEX_USERNAME     Plex username
         '''
     )
     
@@ -173,8 +176,8 @@ Environment Variables:
                         help='Jellyfin API key (default: JELLYFIN_API_KEY env var)')
     parser.add_argument('--plex-url', default=os.getenv('PLEX_URL'),
                         help='Plex server URL (default: PLEX_URL env var)')
-    parser.add_argument('--plex-token', default=os.getenv('PLEX_TOKEN'),
-                        help='Plex authentication token (default: PLEX_TOKEN env var)')
+    parser.add_argument('--plex-username', default=os.getenv('PLEX_USERNAME'),
+                        help='Plex username (default: PLEX_USERNAME env var)')
     parser.add_argument('--dry-run', action='store_true',
                         help='Preview what would be migrated without creating the playlist')
     parser.add_argument('--verbose', '-v', action='store_true',
@@ -184,16 +187,18 @@ Environment Variables:
 
     setup_logging(args.verbose)
 
-    if not all([args.jellyfin_url, args.jellyfin_api_key, args.plex_url, args.plex_token]):
+    if not all([args.jellyfin_url, args.jellyfin_api_key, args.plex_url, args.plex_username]):
         logging.error("Missing required credentials. Please provide all of:")
         logging.error("  - Jellyfin URL and API key")
-        logging.error("  - Plex URL and token")
+        logging.error("  - Plex URL and username")
         logging.error("Use --help for more information about setting these values.")
         sys.exit(1)
 
+    plex_password = getpass.getpass("Enter Plex password: ")
+
     try:
         jellyfin_client = JellyfinClient(args.jellyfin_url, args.jellyfin_api_key)
-        plex_client = PlexClient(args.plex_url, args.plex_token)
+        plex_client = PlexClient(args.plex_url, args.plex_username, plex_password)
         migrator = PlaylistMigrator(jellyfin_client, plex_client)
         
         success = migrator.migrate_playlist(args.playlist_name, args.dry_run)
