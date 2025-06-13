@@ -116,43 +116,91 @@ class PlexClient:
                 self.server = PlexServer(base_url, token)
             
             print(f"Successfully connected to Plex server: {self.server.friendlyName}")
+            
+            print("Building track index from Plex libraries...")
+            self.track_index = self._build_track_index()
+            print(f"Track index built with {len(self.track_index)} tracks")
+            
         except Exception as e:
             print(f"Failed to connect to Plex server: {e}")
             sys.exit(1)
     
+    def _build_track_index(self) -> Dict[str, object]:
+        """Build a local index of all tracks with their file paths"""
+        track_index = {}
+        
+        try:
+            for library in self.server.library.sections():
+                if library.type == 'artist':  # Music libraries
+                    print(f"  Indexing music library: {library.title}")
+                    try:
+                        for artist in library.all():
+                            try:
+                                for album in artist.albums():
+                                    try:
+                                        for track in album.tracks():
+                                            if hasattr(track, 'media') and track.media:
+                                                for media in track.media:
+                                                    if hasattr(media, 'parts') and media.parts:
+                                                        for part in media.parts:
+                                                            if hasattr(part, 'file'):
+                                                                file_path = part.file
+                                                                track_index[file_path] = track
+                                                                import os
+                                                                filename = os.path.basename(file_path)
+                                                                if filename not in track_index:
+                                                                    track_index[filename] = track
+                                    except Exception as e:
+                                        print(f"    Error processing album {album.title}: {e}")
+                                        continue
+                            except Exception as e:
+                                print(f"    Error processing artist {artist.title}: {e}")
+                                continue
+                    except Exception as e:
+                        print(f"  Error indexing library {library.title}: {e}")
+                        continue
+                elif library.type == 'movie' or library.type == 'show':
+                    print(f"  Indexing video library: {library.title}")
+                    try:
+                        for item in library.all():
+                            if hasattr(item, 'media') and item.media:
+                                for media in item.media:
+                                    if hasattr(media, 'parts') and media.parts:
+                                        for part in media.parts:
+                                            if hasattr(part, 'file'):
+                                                file_path = part.file
+                                                track_index[file_path] = item
+                                                import os
+                                                filename = os.path.basename(file_path)
+                                                if filename not in track_index:
+                                                    track_index[filename] = item
+                    except Exception as e:
+                        print(f"  Error indexing library {library.title}: {e}")
+                        continue
+        except Exception as e:
+            print(f"Error building track index: {e}")
+        
+        return track_index
+    
     def find_media_by_path(self, file_path: str) -> Optional[object]:
-        """Find media item in Plex by browsing and comparing file paths"""
+        """Find media item in Plex using the pre-built track index"""
         try:
             import os
             target_filename = os.path.basename(file_path)
             print(f"  Searching for: {file_path}")
             print(f"  Target filename: {target_filename}")
             
-            for library in self.server.library.sections():
-                print(f"  Browsing library: {library.title}")
-                try:
-                    for item in library.all():
-                        if hasattr(item, 'media') and item.media:
-                            for media in item.media:
-                                if hasattr(media, 'parts') and media.parts:
-                                    for part in media.parts:
-                                        if hasattr(part, 'file'):
-                                            plex_file_path = part.file
-                                            plex_filename = os.path.basename(plex_file_path)
-                                            
-                                            if plex_file_path == file_path:
-                                                print(f"  ✓ Found exact path match: {plex_file_path}")
-                                                return item
-                                            
-                                            if plex_filename == target_filename:
-                                                print(f"  ✓ Found filename match: {plex_file_path}")
-                                                return item
-                except Exception as e:
-                    print(f"  Error browsing library {library.title}: {e}")
-                    continue
+            if file_path in self.track_index:
+                print(f"  ✓ Found exact path match in index: {file_path}")
+                return self.track_index[file_path]
             
-            print(f"  ✗ No match found for {file_path}")
+            if target_filename in self.track_index:
+                print(f"  ✓ Found filename match in index: {target_filename}")
+                return self.track_index[target_filename]
+            
+            print(f"  ✗ No match found in index for {file_path}")
             return None
+            
         except Exception as e:
             print(f"Error searching for media by path {file_path}: {e}")
             return None
