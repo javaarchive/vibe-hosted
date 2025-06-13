@@ -85,8 +85,12 @@ class JellyfinClient:
         """Get items in a playlist"""
         items_url = f"{self.base_url}/Playlists/{playlist_id}/Items"
         
+        params = {
+            "fields": "MediaSources"
+        }
+        
         try:
-            response = self.session.get(items_url)
+            response = self.session.get(items_url, params=params)
             response.raise_for_status()
             
             result = response.json()
